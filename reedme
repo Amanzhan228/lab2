@@ -1,0 +1,30 @@
+Lab 2 Report: Logical Clocks and Replication Consistency (3 Nodes) 
+Amanzhan Gaisiev1. Goals - Build Lamport logical clocks. - Create a simple replicated key-value store that becomes consistent over time (eventual 
+consistency). - Use timestamps to solve conflicts with "last writer wins" (LWW) rule. - Run tests on three real AWS EC2 servers and show three special scenarios. 
+2. How the System Works - Three Ubuntu servers on AWS: node-A, node-B, node-C. - They talk to each other using HTTP (ports 8000, 8001, 8002). - Each node has its own copy of the data and a Lamport clock (starts at 0). - When someone does a PUT (add or change a value): - The node increases its clock. - Saves the value with the new clock number (timestamp). - Sends the update + timestamp to the other two nodes. - When a node gets an update from another node: - It updates its own clock (takes the bigger number and adds 1). - It only keeps the new value if the timestamp is higher than what it already has (LWW). - If timestamps are the same, the node with the higher ID (C > B > A) wins. 
+Extra things added: - 8-second delay from A to C (for one scenario). - Automatic retries if sending fails. - Lots of print messages to see what happens. 
+3. The Three Scenarios 
+**Scenario A – Delay in Messages**   
+I added an 8-second delay only when node A sends to node C.   
+After a PUT on node A:   - Nodes A and B got the new value right away.   - Node C got it only after 8 seconds.   
+This shows temporary different views because of network delay, but finally all nodes 
+match. 
+Scenario B – Two Updates at the Same Time**   
+I sent two different PUTs for the same key from node A and node B at almost the same 
+moment.   
+At first the nodes had different values, but soon they all picked the one with the higher 
+timestamp (LWW).   
+The logs showed the older update being ignored. 
+Scenario C – One Node Goes Offline**   
+I stopped node C for a while.   
+I made several updates on A and B while C was off.   
+When I started node C again, it quickly received the missing updates (thanks to retries) and 
+became the same as A and B. 
+ 
+ 
+ 
+4. Conclusion - Lamport clocks work correctly: they increase on local actions and when receiving 
+messages. - The system always ends up with the same data on all nodes, even after delays, conflicts, 
+or one node being down. - Conflicts are solved fairly using timestamps. - All three required scenarios were shown successfully on real AWS servers. 
+ 
+ Code files (`node.py`, `client.py`), logs, and screenshots from each scenario. 
